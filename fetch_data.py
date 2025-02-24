@@ -21,11 +21,11 @@ else:
 
 # PostgreSQL connection details (modify with your credentials)
 conn = psycopg2.connect(
-    dbname="dune_local",
-    user="postgres",
-    password="JJ+blue1014",
-    host="localhost",
-    port="5432"
+    dbname="",
+    user="",
+    password="",
+    host="",
+    port=""
 )
 cur = conn.cursor()
 
