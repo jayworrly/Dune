@@ -1,78 +1,62 @@
-# scripts/pull_from_dune.py
 import os
 import yaml
-from dotenv import load_dotenv
 import requests
+from dotenv import load_dotenv
+import time
+
+def get_query_content(query_id, api_key):
+    headers = {
+        'x-dune-api-key': api_key
+    }
+    
+    # Dune API endpoint for getting query content
+    url = f"https://api.dune.com/api/v1/query/{query_id}"
+    
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        query_data = response.json()
+        return query_data.get('query_sql', '')
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching query {query_id}: {str(e)}")
+        return None
 
 def pull_queries():
     load_dotenv()
     api_key = os.getenv('DUNE_API_KEY')
     
+    if not api_key:
+        print("Error: DUNE_API_KEY not found in .env file")
+        return
+    
     with open('queries.yml', 'r') as file:
-        queries = yaml.safe_load(file)['queries']
+        config = yaml.safe_load(file)
+        queries = config['queries']
+    
+    # Create queries directory if it doesn't exist
+    os.makedirs('queries', exist_ok=True)
     
     for query_id, description in queries.items():
-        # API endpoint logic here
         print(f"Pulling query {query_id}: {description}")
+        
+        query_content = get_query_content(query_id, api_key)
+        if query_content:
+            query_file = f'queries/query___{query_id}.sql'
+            with open(query_file, 'w') as f:
+                f.write(f"-- already part of a query repo\n")
+                f.write(f"-- Query ID: {query_id}\n")
+                f.write(f"-- Description: {description}\n\n")
+                f.write(query_content)
+            print(f"Successfully saved query {query_id}")
+            # Add a small delay to avoid rate limiting
+            time.sleep(1)
+        else:
+            print(f"Skipping query {query_id} due to error")
 
-if __name__ == "__main__":
+def main():
+    print("Starting Dune Query Manager...")
     pull_queries()
-
-# scripts/push_to_dune.py
-import os
-from dotenv import load_dotenv
-
-def push_queries():
-    load_dotenv()
-    api_key = os.getenv('DUNE_API_KEY')
-    
-    queries_dir = 'queries'
-    for file in os.listdir(queries_dir):
-        if file.endswith('.sql'):
-            query_id = file.split('___')[-1].replace('.sql', '')
-            # API endpoint logic here
-            print(f"Pushing query {query_id}")
+    print("Query pull complete!")
 
 if __name__ == "__main__":
-    push_queries()
-
-# scripts/preview_query.py
-import sys
-import os
-from dotenv import load_dotenv
-
-def preview_query(query_id):
-    load_dotenv()
-    api_key = os.getenv('DUNE_API_KEY')
-    
-    query_file = f'queries/query___{query_id}.sql'
-    if os.path.exists(query_file):
-        with open(query_file, 'r') as file:
-            query = file.read()
-            # API endpoint logic here
-            print(f"Previewing query {query_id}")
-    else:
-        print(f"Query {query_id} not found")
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python preview_query.py <query_id>")
-    else:
-        preview_query(sys.argv[1])
-
-# scripts/upload_to_dune.py
-import os
-from dotenv import load_dotenv
-
-def upload_csvs():
-    load_dotenv()
-    api_key = os.getenv('DUNE_API_KEY')
-    
-    uploads_dir = 'uploads'
-    for file in os.listdir(uploads_dir):
-        if file.endswith('.csv'):
-            # API endpoint logic here
-            print(f"Uploading {file}")
-
-if __name__ == "__main__":
-    upload_csvs()
+    main()
